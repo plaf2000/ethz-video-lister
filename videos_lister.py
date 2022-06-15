@@ -51,8 +51,9 @@ last = f"{base_url}.series-metadata.json"
 req_last = requests.get(last, headers = headers)
 last_json = json.loads(req_last.text)
 episodes = last_json["episodes"][::-1]
-list_filename = options["list_filename"] if options["list_filename"] else f"videolinks_{last_json['title'].replace(' ','_')}_{h}p.txt"
+list_filename = options["list_filename"] if options["list_filename"] else "videolinks_{}_{}p.txt".format(re.sub(r'\W','',re.sub(r'-| ','_',last_json['title'])), h)
 
+print(list_filename)
 
 auth_cookies = None
 
