@@ -2,23 +2,34 @@ from logging import error
 import requests
 import json
 from getpass import getpass
+from optparse import OptionParser
+import re
 import sys
 
-if len(sys.argv)==1:
-    sys.exit("Please specify the url.")
 
-referer_url = sys.argv[1]
+usage = "Usage: python3 %prog [options] URL"
+parser = OptionParser(usage=usage)
+parser.add_option("-r", "--resolution", dest="res", default=1080, type=int,help="list video files with height RES [default: %default]", metavar="RES")
+parser.add_option("-f", "--file", dest="list_filename", help="write list to FILE [default: videolinks_{COURSE_TITLE}_{RES}p.txt]", metavar="FILE")
 
-if len(sys.argv)==3:
-    try:
-        h = int(sys.argv[2])
-    except ValueError:
-        sys.exit("Height must be an integer!")
-else:
-    h = 1080
+options, args = parser.parse_args()
+options = vars(options)
+
+if len(args)<1:
+    parser.error("Please specify the url.")
 
 
-base_url = referer_url.removesuffix(".html")
+h = options["res"]
+
+
+re_base = re.match(r"https?://video.ethz.ch/lectures/d-\w{3,6}/\d{4}/(spring|autumn)/\d{3}-\d{4}-\d{2}L",args[0])
+
+if re_base is None:
+    sys.exit("Invalid url.")
+
+base_url = re_base.group(0)
+
+referer_url = f"{base_url}.html"
 
 headers = {
     "Host": "video.ethz.ch",
@@ -36,10 +47,12 @@ headers = {
 }
 
 last = f"{base_url}.series-metadata.json"
+
 req_last = requests.get(last, headers = headers)
 last_json = json.loads(req_last.text)
 episodes = last_json["episodes"][::-1]
-list_filename = f"videolinks_{last_json['title'].replace(' ','_')}_{h}p.txt"
+list_filename = options["list_filename"] if options["list_filename"] else f"videolinks_{last_json['title'].replace(' ','_')}_{h}p.txt"
+
 
 auth_cookies = None
 
