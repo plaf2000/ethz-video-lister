@@ -4,7 +4,7 @@ It allows you to login to the ethz video portal (depending on the authorisation 
 
 ## Usage
 
-```bash
+```
 Usage: python3 videos_lister.py [options] URL
 
 Options:
@@ -14,4 +14,4 @@ Options:
   -f FILE, --file=FILE  write list to FILE [default:
                         videolinks_{COURSE_TITLE}_{RES}p.txt]
 ```
-The URL to provide is in such form: `https://video.ethz.ch/lectures/d-infk/2022/spring/252-0058-00L.html`. Possible resolutions are usually 1080, 720 and 360p.
+Example for an URL to provide: `https://video.ethz.ch/lectures/d-infk/2022/spring/252-0058-00L.html`. Possible resolutions are usually 1080, 720 and 360p.
