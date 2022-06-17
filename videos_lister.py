@@ -86,7 +86,7 @@ class Videos:
             Parameters
             ----------
              - `username`: function which returns the username
-             - `password`: funciton which returns the password
+             - `password`: function which returns the password
             
             Returns
             -------
