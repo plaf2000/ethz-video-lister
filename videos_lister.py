@@ -1,11 +1,8 @@
-from ast import Str
-from logging import error
 import requests
 from requests import cookies
 import json
 from getpass import getpass
 from optparse import OptionParser
-from typing import TypedDict
 import re
 import sys
 
@@ -169,7 +166,6 @@ class Videos:
         return True
     
 
-
 if __name__ == "__main__":
     usage = "Usage: python3 %prog [options] URL"
     parser = OptionParser(usage=usage)
@@ -182,9 +178,7 @@ if __name__ == "__main__":
     if len(args)<1:
         parser.error("Please specify the url.")
 
-
     h = options["res"]
-
 
     try:
         videos = Videos(args[0])
