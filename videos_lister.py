@@ -1,3 +1,4 @@
+import os
 import requests
 from requests import cookies
 import json
@@ -5,8 +6,6 @@ from getpass import getpass
 from optparse import OptionParser
 import re
 import sys
-
-from sympy import true
 
 class InvalidUrl(ValueError):
     def __init__(self,url):
@@ -23,6 +22,63 @@ class InvalidAuth(UnableToLogin):
 class UnknownAuthMethod(UnableToLogin):
     def __init__(self):
         super().__init__("Unknown authentication method.")
+
+class Courses:
+    def __init__(self, fname = "classes.json"):
+        """
+
+        """
+        self.fname = fname
+        if os.path.isfile(fname):
+            with open(fname, "r") as f:
+                self.data = json.load(f)
+        else:
+            self.data = {}
+    def add(self, raw_url: str):
+        video_obj = Videos(raw_url)
+        video_obj.login()
+        data = {}
+        data["protection"] = video_obj.protection
+        data["name"] = video_obj.last["title"]
+        if video_obj.protection == "ETH":
+            data["username"] = video_obj.username
+        elif video_obj.protection == "PWD":
+            data["username"] = video_obj.username
+            data["password"] = video_obj.password
+        data["api_data"] = video_obj.json_data()
+        self.data.setdefault(raw_url, data)
+
+        with open(self.fname, "w") as f:
+            f.write(json.dumps(self.data))
+
+    def delete(self, raw_url):
+        del self.data[raw_url]
+        
+    def update(self):
+        eth_password = None
+        for raw_url, old_data in self.data.items():
+            video = Videos(raw_url)
+            username = None if old_data.username is None else lambda: old_data.username
+        
+            if eth_password is not None and old_data.protection == "ETH":
+                password = lambda: eth_password
+            else:
+                password = None if old_data.password is None else lambda: old_data.password
+            
+            video.login(username, password)
+
+            if eth_password is None and old_data.protection == "ETH":
+                eth_password = video.password
+        
+            
+            self.data[raw_url]["api_data"] = video.json_data()
+
+
+        with open(self.fname, "w") as f:
+            f.write(json.dumps(self.data))
+
+
+
 
 class Videos:
     def __init__(self, raw_url: str):
@@ -58,6 +114,9 @@ class Videos:
 
         self.last = self.json_data()
         self.episodes  = self.last["episodes"][::-1]
+
+        self.username = None
+        self.password = None
 
     
     def json_data(self, episode_id: str | None = None):
@@ -105,10 +164,16 @@ class Videos:
             "Sec-Fetch-Mode": "cors",
         }
 
-        if self.last["protection"] == "PWD":
+        self.protection = self.last["protection"]
+
+        if self.protection == "PWD":
+            self.username = username()
+            self.password = password()
             login_url: str = f"{self.base_url}.series-login.json"
-            data = {"_charset_": "utf-8", "username": username(),
-                "password": password()}
+            data = {"_charset_": "utf-8", "username": self.username,
+                "password": self.password}
+
+            
 
             auth_req = requests.post(login_url, headers=auth_headers, data=data)
 
@@ -118,11 +183,14 @@ class Videos:
             except json.decoder.JSONDecodeError:
                 raise InvalidAuth()
             
-        elif self.last["protection"]=="ETH":
+        elif self.protection =="ETH":
+            self.username = username()
+            self.password = password()
+
             login_url: str = f"{self.base_url}/j_security_check"
 
-            data = {"_charset_": "utf-8", "j_username": username(),
-                "j_password": password(), "j_validate": "true"}
+            data = {"_charset_": "utf-8", "j_username": self.username,
+                "j_password": self.password, "j_validate": "true"}
 
             auth_headers |= {
                 "CSRF-Token": "undefined",
@@ -141,7 +209,7 @@ class Videos:
         return self.auth_cookies
 
 
-    def login(self):
+    def login(self, username = None, password = None):
         """
             Open a login form on the shell.
 
@@ -152,8 +220,10 @@ class Videos:
         if self.is_open():
             print("Open-access videos. No need to login.")
         else:
-            username = lambda: input("Username: ")
-            password = lambda: getpass("Password: ")
+            if username is None:
+                username = lambda: input("Username: ")
+            if password is None:
+                password = lambda: getpass(f"Password for {username()}: ")
             try:
                 self.set_auth_cookies(username,password)
             except UnknownAuthMethod as e:
@@ -161,7 +231,7 @@ class Videos:
                 return False
             except InvalidAuth as e:
                 print(e)
-                return self.login()
+                return self.login(username, password)
             print("Successfully logged in.")
         return True
     
