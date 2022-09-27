@@ -24,7 +24,7 @@ class UnknownAuthMethod(UnableToLogin):
         super().__init__("Unknown authentication method.")
 
 class Courses:
-    def __init__(self, fname = "classes.json"):
+    def __init__(self, fname = "courses.json"):
         """
 
         """
@@ -35,47 +35,70 @@ class Courses:
         else:
             self.data = {}
     def add(self, raw_url: str):
-        video_obj = Videos(raw_url)
-        video_obj.login()
+        videos = Videos(raw_url)
+        if not videos.login():
+            sys.exit()
         data = {}
-        data["protection"] = video_obj.protection
-        data["name"] = video_obj.last["title"]
-        if video_obj.protection == "ETH":
-            data["username"] = video_obj.username
-        elif video_obj.protection == "PWD":
-            data["username"] = video_obj.username
-            data["password"] = video_obj.password
-        data["api_data"] = video_obj.json_data()
+        data["protection"] = videos.protection
+        data["name"] = videos.last["title"]
+        if videos.protection == "ETH":
+            data["username"] = videos.username
+        elif videos.protection == "PWD":
+            data["username"] = videos.username
+            data["password"] = videos.password
+        data["api_data"] = videos.json_data()
+        data["presentations"] = videos.get_presentations()
+
         self.data.setdefault(raw_url, data)
 
         with open(self.fname, "w") as f:
             f.write(json.dumps(self.data))
 
     def delete(self, raw_url):
-        del self.data[raw_url]
+        if raw_url in self.data:
+            del self.data[raw_url]
+            return True
+        return False
         
-    def update(self):
-        eth_password = None
-        for raw_url, old_data in self.data.items():
-            video = Videos(raw_url)
-            username = None if old_data.username is None else lambda: old_data.username
+    def update(self,raw_url):
+        self.eth_password = None
+        old_data = self.data[raw_url]
+        videos = Videos(raw_url)
+        username = None if old_data.username is None else lambda: old_data.username
+    
+        if self.eth_password is not None and old_data.protection == "ETH":
+            password = lambda: eth_password
+        else:
+            password = None if old_data.password is None else lambda: old_data.password
         
-            if eth_password is not None and old_data.protection == "ETH":
-                password = lambda: eth_password
-            else:
-                password = None if old_data.password is None else lambda: old_data.password
-            
-            video.login(username, password)
+        videos.login(username, password)
 
-            if eth_password is None and old_data.protection == "ETH":
-                eth_password = video.password
+        if self.eth_password is None and old_data.protection == "ETH":
+            eth_password = videos.password
+    
         
-            
-            self.data[raw_url]["api_data"] = video.json_data()
+        self.data[raw_url]["api_data"] = videos.json_data()
+        self.data[raw_url]["presentations"] = videos.get_presentations()
 
 
         with open(self.fname, "w") as f:
             f.write(json.dumps(self.data))
+
+    def names_url(self,):
+        courses = {}
+        for url, data in self.data.items():
+            courses[data["name"]] = url
+        return courses
+
+    def play_all(self, raw_url, player: str = "mpv", h=1080):      
+        if player=="mpv" or player=="vlc":
+            self.update(raw_url)
+            urls = []
+            for pres in self.data[raw_url]["presentations"]:
+                if pres["height"] == h:
+                    urls.append(pres['url'])
+            os.system(f"{player} {' '.join(urls)}")
+        
 
 
 
@@ -130,6 +153,12 @@ class Videos:
         data_url = f"{self.base_url}{episode}.series-metadata.json"
         req = requests.get(data_url, headers=self.videos_header, cookies=self.auth_cookies)
         return json.loads(req.text)
+
+    def get_presentations(self):
+        presentations = []
+        for episode in self.episodes:
+            presentations.append(self.json_data(episode["id"])["selectedEpisode"]["media"]["presentations"])
+        return presentations
 
 
     def is_open(self):
@@ -234,39 +263,73 @@ class Videos:
                 return self.login(username, password)
             print("Successfully logged in.")
         return True
+
+
+
     
 
 if __name__ == "__main__":
-    usage = "Usage: python3 %prog [options] URL"
+    usage = "Usage: python3 %prog [actions] [options]"
+    
     parser = OptionParser(usage=usage)
     parser.add_option("-r", "--resolution", dest="res", default=1080, type=int,help="list video files with height RES [default: %default]", metavar="RES")
-    parser.add_option("-f", "--file", dest="list_filename", help="write list to FILE [default: videolinks_{COURSE_TITLE}_{RES}p.txt]", metavar="FILE")
+    parser.add_option("-f", "--file", dest="courses_file", help="write data to FILE [default: courses.json]", metavar="FILE")
+    parser.add_option("-p", "--player", dest="player", help="play with vlc or mpv [default: mpv]", metavar="PLAYER")
 
     options, args = parser.parse_args()
     options = vars(options)
 
+
+
+
     if len(args)<1:
-        parser.error("Please specify the url.")
+        parser.error("Please specify the action.")
 
-    h = options["res"]
+    action = args[0]
 
-    try:
-        videos = Videos(args[0])
-    except InvalidUrl as e:
-        sys.exit(e)
-
-    list_filename = options["list_filename"] if options["list_filename"] else "videolinks_{}_{}p.txt".format(re.sub(r'\W','',re.sub(r'-| ','_',videos.last['title'])), h)
+    courses = Courses(options["courses_file"])
 
 
-    if not videos.login():
-        sys.exit()
+    if action=="add":
+        if len(args)<2:
+            parser.error("Please provide an url.")
+        else:
+            try:
+                courses.add(raw_url=args[1])
+            except InvalidUrl as e:
+                sys.exit(e)
+        
+    if action=="delete":
+        if len(args)<2:
+            parser.error("Please provide an url.")
+        else:
+            if not courses.delete(raw_url=args[1]):
+                print("Course url was not found in local data.")
+    
+    if action == "play":
+        h = options["res"]
+        player = options["player"]
+        cnames = courses.names_url()
+        i=1
+        names_list = []
+        for name in cnames:
+            print(f"{i}) {name}")
+            names_list.append(name)
+            i+=1
+        try:
+            sel_i = int(input("Select a course by typing the corresponding number: "))
+        except ValueError:
+            sel_i = int(input("Please enter a number: "))
+        while i not in range(1,len(names_list)):
+            try:
+                sel_i = int(input("Please enter a number in the correct range: "))
+            except ValueError:
+                sel_i = int(input("Please enter a number: "))
 
-    with open(list_filename, "w") as f:
-        for episode in videos.episodes:
-            presentations = videos.json_data(episode["id"])["selectedEpisode"]["media"]["presentations"]
-            for pres in presentations:
-                if pres["height"] == h:
-                    f.write(f"{pres['url']}\n")
+        courses.play_all(cnames[names_list[sel_i]], player=player, h=h)
+    
 
-    print(f"List saved in {list_filename}")
+ 
+            
+
 
