@@ -24,7 +24,7 @@ class UnknownAuthMethod(UnableToLogin):
         super().__init__("Unknown authentication method.")
 
 class Courses:
-    def __init__(self, fname = "courses.json"):
+    def __init__(self, fname):
         """
 
         """
@@ -41,6 +41,8 @@ class Courses:
         data = {}
         data["protection"] = videos.protection
         data["name"] = videos.last["title"]
+        data["username"] = None
+        data["password"] = None
         if videos.protection == "ETH":
             data["username"] = videos.username
         elif videos.protection == "PWD":
@@ -57,6 +59,8 @@ class Courses:
     def delete(self, raw_url):
         if raw_url in self.data:
             del self.data[raw_url]
+            with open(self.fname, "w") as f:
+                f.write(json.dumps(self.data))
             return True
         return False
         
@@ -64,17 +68,17 @@ class Courses:
         self.eth_password = None
         old_data = self.data[raw_url]
         videos = Videos(raw_url)
-        username = None if old_data.username is None else lambda: old_data.username
+        username = None if old_data["username"] is None else lambda: old_data["username"]
     
-        if self.eth_password is not None and old_data.protection == "ETH":
-            password = lambda: eth_password
+        if self.eth_password is not None and old_data["protection"] == "ETH":
+            password = lambda _: self.eth_password
         else:
-            password = None if old_data.password is None else lambda: old_data.password
+            password = None if old_data["password"] is None else lambda _: old_data["password"]
         
         videos.login(username, password)
 
-        if self.eth_password is None and old_data.protection == "ETH":
-            eth_password = videos.password
+        if self.eth_password is None and old_data["protection"] == "ETH":
+            self.eth_password = videos.password
     
         
         self.data[raw_url]["api_data"] = videos.json_data()
@@ -90,13 +94,16 @@ class Courses:
             courses[data["name"]] = url
         return courses
 
-    def play_all(self, raw_url, player: str = "mpv", h=1080):      
+    def play_all(self, raw_url, player: str = "mpv", h=1080, revert_order=False):      
         if player=="mpv" or player=="vlc":
             self.update(raw_url)
             urls = []
             for pres in self.data[raw_url]["presentations"]:
-                if pres["height"] == h:
-                    urls.append(pres['url'])
+                for pres_res in pres:
+                    if pres_res["height"] == h:
+                        urls.append(pres_res['url'])
+            if revert_order:
+                urls = urls[::-1]
             os.system(f"{player} {' '.join(urls)}")
         
 
@@ -197,7 +204,7 @@ class Videos:
 
         if self.protection == "PWD":
             self.username = username()
-            self.password = password()
+            self.password = password(self.username)
             login_url: str = f"{self.base_url}.series-login.json"
             data = {"_charset_": "utf-8", "username": self.username,
                 "password": self.password}
@@ -214,7 +221,7 @@ class Videos:
             
         elif self.protection =="ETH":
             self.username = username()
-            self.password = password()
+            self.password = password(self.username)
 
             login_url: str = f"{self.base_url}/j_security_check"
 
@@ -252,7 +259,7 @@ class Videos:
             if username is None:
                 username = lambda: input("Username: ")
             if password is None:
-                password = lambda: getpass(f"Password for {username()}: ")
+                password = lambda uname: getpass(f"Password for {uname}: ")
             try:
                 self.set_auth_cookies(username,password)
             except UnknownAuthMethod as e:
@@ -269,12 +276,14 @@ class Videos:
     
 
 if __name__ == "__main__":
-    usage = "Usage: python3 %prog [actions] [options]"
+    usage = "Usage: python3 %prog [actions] [options]\n Possible actions are:\n\t add [URL]\n\t delete\n\t remove (delete alias)\n\t play"
     
     parser = OptionParser(usage=usage)
     parser.add_option("-r", "--resolution", dest="res", default=1080, type=int,help="list video files with height RES [default: %default]", metavar="RES")
-    parser.add_option("-f", "--file", dest="courses_file", help="write data to FILE [default: courses.json]", metavar="FILE")
-    parser.add_option("-p", "--player", dest="player", help="play with vlc or mpv [default: mpv]", metavar="PLAYER")
+    parser.add_option("-f", "--file", dest="courses_file", default=os.path.join(os.path.dirname(os.path.realpath(__file__)),"courses.json"), help="write data to FILE [default: %default]", metavar="FILE")
+    parser.add_option("-p", "--player", dest="player", default="mpv", help="play with vlc or mpv [default: %default]", metavar="PLAYER")
+    parser.add_option("-o", action="store_true", dest="revert_order",help="set the flag if you want to see videos in antichronological order")
+    parser.set_defaults(revert_order=False)
 
     options, args = parser.parse_args()
     options = vars(options)
@@ -289,6 +298,27 @@ if __name__ == "__main__":
 
     courses = Courses(options["courses_file"])
 
+    def get_url_from_list():
+        cnames = courses.names_url()
+        i=1
+        names_list = []
+        for name in cnames:
+            print(f"{i}) {name}")
+            names_list.append(name)
+            i+=1
+            
+        def get_num(msg):
+            try:
+                return int(input(msg))
+            except ValueError:
+                return get_num("Please enter a number: ")
+
+        sel_i = get_num("Select a course by typing the corresponding number: ")
+        while sel_i not in range(1,len(names_list)+1):
+            sel_i = get_num("Select number in the correct range: ")
+        
+        return cnames[names_list[sel_i-1]]
+
 
     if action=="add":
         if len(args)<2:
@@ -299,34 +329,14 @@ if __name__ == "__main__":
             except InvalidUrl as e:
                 sys.exit(e)
         
-    if action=="delete":
-        if len(args)<2:
-            parser.error("Please provide an url.")
-        else:
-            if not courses.delete(raw_url=args[1]):
-                print("Course url was not found in local data.")
+    if action=="delete" or action=="remove":
+        if not courses.delete(raw_url=get_url_from_list()):
+            print("Course url was not found in local data.")
     
     if action == "play":
         h = options["res"]
         player = options["player"]
-        cnames = courses.names_url()
-        i=1
-        names_list = []
-        for name in cnames:
-            print(f"{i}) {name}")
-            names_list.append(name)
-            i+=1
-        try:
-            sel_i = int(input("Select a course by typing the corresponding number: "))
-        except ValueError:
-            sel_i = int(input("Please enter a number: "))
-        while i not in range(1,len(names_list)):
-            try:
-                sel_i = int(input("Please enter a number in the correct range: "))
-            except ValueError:
-                sel_i = int(input("Please enter a number: "))
-
-        courses.play_all(cnames[names_list[sel_i]], player=player, h=h)
+        courses.play_all(get_url_from_list(), player=player, h=h, revert_order=options["revert_order"])
     
 
  
