@@ -104,7 +104,7 @@ class Courses:
                         urls.append(pres_res['url'])
             if revert_order:
                 urls = urls[::-1]
-            os.system(f"{player} {' '.join(urls)}")
+            os.system(f"{player} {' '.join(urls)} & exit")
         
 
 
