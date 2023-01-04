@@ -1,11 +1,13 @@
 import os
 import requests
+import subprocess
 from requests import cookies
 import json
 from getpass import getpass
 from optparse import OptionParser
 import re
 import sys
+from datetime import datetime
 
 class InvalidUrl(ValueError):
     def __init__(self,url):
@@ -64,10 +66,15 @@ class Courses:
             return True
         return False
         
-    def update(self,raw_url):
+    def update(self,raw_url,force=False):
         self.eth_password = None
         old_data = self.data[raw_url]
         videos = Videos(raw_url)
+        last_stored_dt = datetime.fromisoformat(old_data["api_data"]["episodes"][0]["createdAt"])
+        last_updated_dt = datetime.fromisoformat(videos.episodes[-1]["createdAt"])
+        if last_updated_dt >= last_stored_dt and not force:
+            return
+
         username = None if old_data["username"] is None else lambda: old_data["username"]
     
         if self.eth_password is not None and old_data["protection"] == "ETH":
@@ -104,7 +111,7 @@ class Courses:
                         urls.append(pres_res['url'])
             if revert_order:
                 urls = urls[::-1]
-            os.system(f"{player} {' '.join(urls)} & exit")
+            subprocess.Popen([player] + urls)
         
 
 
