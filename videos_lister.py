@@ -72,7 +72,7 @@ class Courses:
         videos = Videos(raw_url)
         last_stored_dt = datetime.fromisoformat(old_data["api_data"]["episodes"][0]["createdAt"])
         last_updated_dt = datetime.fromisoformat(videos.episodes[-1]["createdAt"])
-        if last_updated_dt >= last_stored_dt and not force:
+        if last_updated_dt == last_stored_dt and not force:
             return
 
         username = None if old_data["username"] is None else lambda: old_data["username"]
