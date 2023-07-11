@@ -108,7 +108,7 @@ class Courses:
             courses[data["name"]] = url
         return courses
 
-    def play_all(self, raw_url, player: str = "mpv", h=1080, revert_order=False):
+    def play_all(self, raw_url, player: str = "mpv", h=1080):
         if player == "mpv" or player == "vlc":
             self.update(raw_url)
             opts = [self.playlist_path(raw_url=raw_url)]
@@ -361,9 +361,6 @@ if __name__ == "__main__":
             os.path.realpath(__file__)), "playlists"), help="write data to FILE [default: %default]", metavar="FILE")
         parser.add_option("-p", "--player", dest="player", default="mpv",
                         help="play with vlc or mpv [default: %default]", metavar="PLAYER")
-        parser.add_option("-o", action="store_true", dest="revert_order",
-                        help="set the flag if you want to see videos in antichronological order")
-        parser.set_defaults(revert_order=False)
 
         options, args = parser.parse_args()
         options = vars(options)
@@ -403,7 +400,8 @@ if __name__ == "__main__":
                 try:
                     courses.add(raw_url=args[1])
                 except InvalidUrl as e:
-                    sys.exit(e)
+                    print(e)
+                    sys.exit()
 
         if action == "delete" or action == "remove":
             if not courses.delete(raw_url=get_url_from_list()):
@@ -414,7 +412,7 @@ if __name__ == "__main__":
             player = options["player"]
             course_url = get_url_from_list()
             proc=courses.play_all(course_url, player=player,
-                            h=h, revert_order=options["revert_order"])
+                            h=h)
             if proc:
                 courses.set_last_played(proc.stdout, proc.stderr, course_url, player)
     except KeyboardInterrupt:

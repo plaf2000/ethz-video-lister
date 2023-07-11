@@ -20,7 +20,5 @@ Options:
                         Scuola/ETH/videos_lister/courses.json]
   -p PLAYER, --player=PLAYER
                         play with vlc or mpv [default: mpv]
-  -o                    set the flag if you want to see videos in
-                        antichronological order
 ```
 Example for an URL to provide: `https://video.ethz.ch/lectures/d-infk/2022/spring/252-0058-00L.html`. Possible resolutions are usually 1080, 720 and 360p.
