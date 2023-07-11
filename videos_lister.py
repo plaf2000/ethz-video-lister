@@ -358,7 +358,7 @@ if __name__ == "__main__":
         parser.add_option("-f", "--file", dest="courses_file", default=os.path.join(os.path.dirname(
             os.path.realpath(__file__)), "courses.json"), help="write data to FILE [default: %default]", metavar="FILE")
         parser.add_option("-l", "--playlists-folder", dest="playlists_folder", default=os.path.join(os.path.dirname(
-            os.path.realpath(__file__)), "playlists"), help="write data to FILE [default: %default]", metavar="FILE")
+            os.path.realpath(__file__)), "playlists"), help="write playlists in FOLDER [default: %default]", metavar="FOLDER")
         parser.add_option("-p", "--player", dest="player", default="mpv",
                         help="play with vlc or mpv [default: %default]", metavar="PLAYER")
 

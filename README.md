@@ -18,7 +18,7 @@ Options:
                         list video files with height RES [default: 1080]
   -f FILE, --file=FILE  write data to FILE [default: SCRIPT_PATH/courses.json]
   -l FILE, --playlists-folder=FILE
-                        write data to FILE [default: SCRIPT_PATH/playlists]
+                        write playlists in FOLDER [default: SCRIPT_PATH/playlists]
   -p PLAYER, --player=PLAYER
                         play with vlc or mpv [default: mpv]
 
