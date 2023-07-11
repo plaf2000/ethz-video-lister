@@ -136,7 +136,7 @@ class Courses:
             for pres_res in episode["media"]:
                 if pres_res["height"] == h:
                     url = pres_res['url']
-                    m3u+=f"#EXTINF:{episode['duration']},{episode['createdAt']}\n"
+                    m3u+=f"#EXTINF:{episode['duration']},{data_course['name']} - {datetime.fromisoformat(episode['createdAt']).strftime('%c')}\n"
                     m3u+=f"{url}\n\n"
 
         m3u = f"#EXTM3U\n{time_ptr}\n#PLAYLIST:{data_course['name']}\n\n{m3u}"
