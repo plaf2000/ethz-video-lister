@@ -16,9 +16,11 @@ Options:
   -h, --help            show this help message and exit
   -r RES, --resolution=RES
                         list video files with height RES [default: 1080]
-  -f FILE, --file=FILE  write data to FILE [default: /home/plaf2000/Documents/
-                        Scuola/ETH/videos_lister/courses.json]
+  -f FILE, --file=FILE  write data to FILE [default: SCRIPT_PATH/courses.json]
+  -l FILE, --playlists-folder=FILE
+                        write data to FILE [default: SCRIPT_PATH/playlists]
   -p PLAYER, --player=PLAYER
                         play with vlc or mpv [default: mpv]
+
 ```
 Example for an URL to provide: `https://video.ethz.ch/lectures/d-infk/2022/spring/252-0058-00L.html`. Possible resolutions are usually 1080, 720 and 360p.
