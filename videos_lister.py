@@ -118,7 +118,7 @@ class Courses:
 
             self.generate_M3U(raw_url=raw_url, h=h)
             
-            proc = subprocess.run([player] + opts, capture_output=True)
+            proc = subprocess.Popen([player] + opts, stderr=subprocess.DEVNULL ,stdout=subprocess.DEVNULL)
             return proc
         
     def generate_M3U(self, raw_url, h):
@@ -413,6 +413,7 @@ if __name__ == "__main__":
             course_url = get_url_from_list()
             proc=courses.play_all(course_url, player=player,
                             h=h)
+            sys.exit()
             if proc:
                 courses.set_last_played(proc.stdout, proc.stderr, course_url, player)
     except KeyboardInterrupt:
