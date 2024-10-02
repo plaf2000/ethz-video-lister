@@ -177,7 +177,7 @@ class Videos:
         """
             Parameters
             ----------
-             - `raw_url`: url matching following pattern: `https?://video.ethz.ch/lectures/d-\w{3,6}/\d{4}/(spring|autumn)/\d{3}-\d{4}-\d{2}L`
+             - `raw_url`: url matching following pattern: `https?://video.ethz.ch/lectures/d-\\w{3,6}/\\d{4}/(spring|autumn)/\\d{3}-\\d{4}-\\d{2}L`
         """
 
         re_base = re.match(
